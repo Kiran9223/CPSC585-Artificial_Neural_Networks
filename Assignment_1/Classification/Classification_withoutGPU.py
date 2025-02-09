@@ -27,13 +27,12 @@ X_train,X_test,y_train,y_test=train_test_split(X_scale, y, test_size=0.2, random
 
 print(X_train.shape, y_train.shape)
 print(X_test.shape, y_test.shape)
+start_time = time.time()
 
 # Model training on training data
 log_reg = LogisticRegression()
 log_reg.fit(X_train,y_train)
-start_time = time.time()
 cpu_time = time.time() - start_time
-
 
 # Prediction on test data
 y_pred = log_reg.predict(X_test)
