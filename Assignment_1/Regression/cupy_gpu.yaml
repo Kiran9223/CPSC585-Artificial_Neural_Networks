@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cupy-regression-job
+  namespace: csuf-titans
+spec:
+  template:
+    spec:
+      containers:
+        - name: cupy-regression-container
+          image: rahulkrish28/cupy_image:latest
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+              nvidia.com/gpu: 1
+      restartPolicy: Never
+  backoffLimit: 4

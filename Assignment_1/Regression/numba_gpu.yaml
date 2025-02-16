@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: numba-regression-job
+  namespace: csuf-titans
+spec:
+  template:
+    spec:
+      containers:
+        - name: numba-regression-container
+          image: rahulkrish28/numba_image:latest
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+              nvidia.com/gpu: 1
+      restartPolicy: Never
+  backoffLimit: 4
