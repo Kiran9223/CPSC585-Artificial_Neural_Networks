@@ -5,10 +5,15 @@ metadata:
   namespace: csuf-titans
 spec:
   template:
+    metadata:
+      name: numba-regression-job
     spec:
       containers:
         - name: numba-regression-container
           image: rahulkrish28/numba_image:latest
+          env:
+            - name: NUMBA_CUDA_ARCH
+              value: "84"
           resources:
             requests:
               cpu: "4"

@@ -5,6 +5,8 @@ metadata:
   namespace: csuf-titans
 spec:
   template:
+    metadata:
+      name: cupy-regression-job
     spec:
       containers:
         - name: cupy-regression-container
