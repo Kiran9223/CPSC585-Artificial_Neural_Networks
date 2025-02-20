@@ -24,8 +24,8 @@ for col in cols_to_convert:
 
 X_clean = X.dropna(subset=cols_to_convert)
 
-X = X_clean[features].astype(float)
-y = X_clean[target].astype(float)
+X = X_clean[features].astype(np.float16)
+y = X_clean[target].astype(np.float16)
 
 # Splitting the dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)

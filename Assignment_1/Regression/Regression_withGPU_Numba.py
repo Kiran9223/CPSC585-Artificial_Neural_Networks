@@ -5,7 +5,7 @@ from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import time
 from ucimlrepo import fetch_ucirepo
-from numba import jit
+from numba import cuda
 
 # -----------------------------
 # Data Loading and Preprocessing
@@ -15,8 +15,6 @@ individual_household_electric_power_consumption = fetch_ucirepo(id=235)
 
 # Load the dataset
 X = individual_household_electric_power_consumption.data.features
-# The targets field is null so we extract the target from the features
-# Define the columns we want to use
 features = ['Global_reactive_power', 'Voltage', 'Global_intensity']
 target = 'Global_active_power'
 
@@ -49,24 +47,48 @@ X_test_poly = poly.transform(X_test_scaled)
 y_train = y_train.to_numpy()
 y_test = y_test.to_numpy()
 
-# -----------------------------
-# Define Numba-Accelerated Function for Linear Regression
-# -----------------------------
-@jit(nopython=True)
-def compute_beta(X, y):
-    # Compute X^T * X
-    XtX = np.dot(X.T, X)
-    # Compute X^T * y
-    Xty = np.dot(X.T, y)
-    # Solve (X^T X) * beta = (X^T y) for beta
-    beta = np.linalg.solve(XtX, Xty)
-    return beta
+# Move data to GPU
+X_train_gpu = cuda.to_device(X_train_poly)
+y_train_gpu = cuda.to_device(y_train)
 
 # -----------------------------
-# Compute Regression Coefficients Using Numba
+# Define CUDA-Accelerated Function for Linear Regression
 # -----------------------------
+@cuda.jit
+def compute_beta_gpu(X, y, beta, XtX, Xty):
+    row, col = cuda.grid(2)
+    if row < XtX.shape[0] and col < XtX.shape[1]:
+        # Compute X^T * X
+        XtX[row, col] = 0.0
+        for k in range(X.shape[0]):
+            XtX[row, col] += X[k, row] * X[k, col]
+
+    if row < Xty.shape[0] and col == 0:
+        # Compute X^T * y
+        Xty[row] = 0.0
+        for k in range(X.shape[0]):
+            Xty[row] += X[k, row] * y[k]
+
+# -----------------------------
+# Compute Regression Coefficients Using CUDA
+# -----------------------------
+beta_gpu = cuda.device_array(X_train_poly.shape[1])
+XtX_gpu = cuda.device_array((X_train_poly.shape[1], X_train_poly.shape[1]))
+Xty_gpu = cuda.device_array(X_train_poly.shape[1])
+
+threadsperblock = (16, 16)
+blockspergrid_x = (X_train_poly.shape[1] + threadsperblock[0] - 1) // threadsperblock[0]
+blockspergrid_y = (X_train_poly.shape[1] + threadsperblock[1] - 1) // threadsperblock[1]
+blockspergrid = (blockspergrid_x, blockspergrid_y)
+
 start_time = time.time()
-beta = compute_beta(X_train_poly, y_train)
+compute_beta_gpu[blockspergrid, threadsperblock](X_train_gpu, y_train_gpu, beta_gpu, XtX_gpu, Xty_gpu)
+cuda.synchronize()
+
+# Solve for beta using NumPy after moving back to CPU
+XtX = XtX_gpu.copy_to_host()
+Xty = Xty_gpu.copy_to_host()
+beta = np.linalg.solve(XtX, Xty)
 numba_time = time.time() - start_time
 
 # -----------------------------
@@ -92,14 +114,3 @@ print("Training R^2:", train_r2)
 print("Testing RMSE:", test_rmse)
 print("Testing R^2:", test_r2)
 print("Computation Time: {:.2f} seconds".format(numba_time))
-
-"""
-Coefficient Vector (first 10 shown): [ 1.10914257e+00 -1.82740718e-02  1.45644238e-02  1.08444781e+00
- -7.68885769e-03  9.76884441e-04  1.30442423e-02  3.17867099e-06
-  1.31582852e-02 -1.01784094e-02]
-Training RMSE: 0.038150216425650446
-Training R^2: 0.9986962545071121
-Testing RMSE: 0.03781098890162548
-Testing R^2: 0.998727986856342
-Computation Time: 8.27 seconds
-"""
