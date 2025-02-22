@@ -1,82 +1,99 @@
 import numpy as np
 import pandas as pd
 from ucimlrepo import fetch_ucirepo
-from numba import cuda, float32
+from numba import cuda
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score
+import time
 
+# -----------------------------
+# Data Loading and Preprocessing
+# -----------------------------
 # Fetch the dataset
-dataset = fetch_ucirepo(id=891)  # CDC Diabetes Health Indicators dataset
+# Load dataset
+dataset = fetch_ucirepo(id=891)
+X = dataset.data.features.to_numpy()
+y = dataset.data.targets.to_numpy().flatten()  # Convert to 1D array
 
-# Check if data is loaded properly
-print(f"Dataset: {dataset}")
-print(f"Data: {dataset.data}")
+# Standardize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-# If the dataset is fetched properly, proceed with the preprocessing
-data = dataset.data
+# Add intercept term (bias) by adding a column of ones
+X_scaled = np.c_[np.ones(X_scaled.shape[0]), X_scaled]
 
-if data is not None:
-    # Preprocessing
-    data = data.dropna()  # Dropping rows with missing values
-    X = data.drop(columns=["diabetes"])
-    y = data["diabetes"]
+# Split into training and test set
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-    # Normalize features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+# Convert to NumPy arrays for GPU processing
+X_train_gpu = cuda.to_device(X_train)
+y_train_gpu = cuda.to_device(y_train)
 
-    # Split into training and test set
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+# -----------------------------
+# Define CUDA-Accelerated Function to Compute Normal Equation for Logistic Regression
+# -----------------------------
+@cuda.jit
+def compute_xtx_xty(X, y, XtX, Xty):
+    row, col = cuda.grid(2)
+    
+    if row < XtX.shape[0] and col < XtX.shape[1]:
+        # Compute X^T * X
+        XtX[row, col] = 0.0
+        for k in range(X.shape[0]):
+            XtX[row, col] += X[k, row] * X[k, col]
+    
+    if row < Xty.shape[0] and col == 0:
+        # Compute X^T * y
+        Xty[row] = 0.0
+        for k in range(X.shape[0]):
+            Xty[row] += X[k, row] * y[k]
 
-    # Convert y_train and y_test to numpy arrays for compatibility
-    y_train = y_train.values.astype(np.float32)
-    y_test = y_test.values.astype(np.float32)
+# -----------------------------
+# Compute Weights Using Normal Equation
+# -----------------------------
+beta_gpu = cuda.device_array(X_train.shape[1])
+XtX_gpu = cuda.device_array((X_train.shape[1], X_train.shape[1]))
+Xty_gpu = cuda.device_array(X_train.shape[1])
 
-    # Define the logistic regression kernel for GPU using Numba
-    @cuda.jit
-    def logistic_regression_gpu(X, y, w, learning_rate=0.01, epochs=1000):
-        i = cuda.grid(1)
-        if i < X.shape[0]:
-            # Compute the logistic regression update for each sample
-            linear_output = 0.0
-            for j in range(X.shape[1]):
-                linear_output += X[i, j] * w[j]
-            prediction = 1 / (1 + np.exp(-linear_output))  # Sigmoid function
-            error = y[i] - prediction
+threadsperblock = (16, 16)
+blockspergrid_x = (X_train.shape[1] + threadsperblock[0] - 1) // threadsperblock[0]
+blockspergrid_y = (X_train.shape[1] + threadsperblock[1] - 1) // threadsperblock[1]
+blockspergrid = (blockspergrid_x, blockspergrid_y)
 
-            for j in range(X.shape[1]):
-                # Update weights
-                w[j] += learning_rate * error * X[i, j]
+start_time = time.time()
+compute_xtx_xty[blockspergrid, threadsperblock](X_train_gpu, y_train_gpu, XtX_gpu, Xty_gpu)
+cuda.synchronize()
 
-    # Initialize weights and move data to GPU
-    X_train_gpu = cuda.to_device(X_train.astype(np.float32))
-    y_train_gpu = cuda.to_device(y_train)
-    w_gpu = cuda.device_array(X_train.shape[1], dtype=np.float32)
+# Solve for beta using NumPy after moving back to CPU
+XtX = XtX_gpu.copy_to_host()
+Xty = Xty_gpu.copy_to_host()
+beta = np.linalg.solve(XtX, Xty)
+numba_time = time.time() - start_time
 
-    # Launch kernel with one block and multiple threads
-    logistic_regression_gpu[256, 256](X_train_gpu, y_train_gpu, w_gpu)
+# -----------------------------
+# Predictions on Testing Set
+# -----------------------------
+y_test_pred = 1 / (1 + np.exp(-np.dot(X_test, beta)))  # Sigmoid function
+y_test_pred_bin = (y_test_pred > 0.5).astype(float)  # Convert to binary labels
 
-    # After training, you can use the weights for predictions and evaluation
-    # Moving weights back to the CPU
-    w_cpu = w_gpu.copy_to_host()
+# -----------------------------
+# Calculate Performance Metrics
+# -----------------------------
+conf_matrix = confusion_matrix(y_test, y_test_pred_bin)
+accuracy = accuracy_score(y_test, y_test_pred_bin)
+precision = precision_score(y_test, y_test_pred_bin)
 
-    # Make predictions on test set
-    X_test_gpu = cuda.to_device(X_test.astype(np.float32))
-    y_pred_gpu = np.dot(X_test_gpu, w_cpu)  # Linear predictions
-    y_pred_gpu = 1 / (1 + np.exp(-y_pred_gpu))  # Sigmoid function
+# -----------------------------
+# Results
+# -----------------------------
+print("Coefficient Vector (first 10 shown):", beta[:10])
+print("Confusion Matrix:\n", conf_matrix)
+print("Accuracy:", accuracy)
+print("Precision:", precision)
+print("Computation Time: {:.2f} seconds".format(numba_time))
 
-    # Convert to binary prediction
-    y_pred_bin = (y_pred_gpu > 0.5).astype(np.float32)
+# Get GPU device information
+gpu = cuda.get_current_device()
+print(f"GPU Name: {gpu.name}")
 
-    # Evaluate the model's performance
-    conf_matrix_gpu = confusion_matrix(y_test, y_pred_bin)
-    accuracy_gpu = accuracy_score(y_test, y_pred_bin)
-    precision_gpu = precision_score(y_test, y_pred_bin)
-
-    print("Confusion Matrix (GPU):", conf_matrix_gpu)
-    print("Accuracy (GPU):", accuracy_gpu)
-    print("Precision (GPU):", precision_gpu)
-
-else:
-    print("Failed to load dataset.")
