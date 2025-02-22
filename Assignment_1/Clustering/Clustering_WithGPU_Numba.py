@@ -114,3 +114,20 @@ print(f"Numba GPU KMeans -> RMSE: {rmse_gpu:.4f}, ARI: {ari_gpu:.4f}, Time: {gpu
 # ari_sklearn = adjusted_rand_score(true_labels, kmeans.labels_)
 
 # print(f"sklearn KMeans (CPU) -> RMSE: {rmse_sklearn:.4f}, ARI: {ari_sklearn:.4f}, Time: {sklearn_time:.4f} seconds")
+
+
+# ==========
+# == CUDA ==
+# ==========
+
+# CUDA Version 11.3.1
+
+# Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+# This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+# By pulling and using the container, you accept the terms and conditions of this license:
+# https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+# A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+# Numba GPU KMeans -> RMSE: 0.9416, ARI: 0.1691, Time: 1.5929 seconds

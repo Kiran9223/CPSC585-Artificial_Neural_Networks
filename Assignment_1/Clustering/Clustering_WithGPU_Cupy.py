@@ -28,7 +28,8 @@ def kmeans_cupy(X, n_clusters, max_iter=300):
     centroids = X_gpu[random_indices]
 
     for _ in range(max_iter):
-        # Compute distances using CuPy broadcasting (faster than loops)
+        # Compute Euclidean distances efficiently using CuPy broadcasting
+        # This implements our similarity measure: d(x,y) = sqrt(sum((x_i - y_i)²))
         distances = cp.sqrt(cp.sum((X_gpu[:, cp.newaxis, :] - centroids) ** 2, axis=2))
         labels = cp.argmin(distances, axis=1)  # Assign clusters
 
@@ -53,9 +54,27 @@ cupy_time = time.time() - start_time
 
 # Compute RMSE & ARI for CuPy
 rmse_cupy = np.sqrt(mean_squared_error(scaled_features, centroids_cupy[cluster_labels_cupy]))
+# Adjusted Rand Index: measures similarity between two clusterings -> External Index
+# Higher ARI indicates better alignment with true labels
 ari_cupy = adjusted_rand_score(true_labels, cluster_labels_cupy)
 
 print(f"CuPy (GPU) KMeans -> RMSE: {rmse_cupy:.4f}, ARI: {ari_cupy:.4f}, Time: {cupy_time:.4f} seconds")
 
 # Output:
 # CuPy (GPU) KMeans -> RMSE: 0.9416, ARI: 0.1690, Time: 0.9852 seconds
+
+# ==========
+# == CUDA ==
+# ==========
+
+# CUDA Version 11.3.1
+
+# Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+# This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+# By pulling and using the container, you accept the terms and conditions of this license:
+# https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+# A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+# CuPy (GPU) KMeans -> RMSE: 0.9725, ARI: -0.0109, Time: 12.5016 seconds
