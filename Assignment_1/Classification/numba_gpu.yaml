@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: numba-classification-job
+  namespace: csuf-titans
+spec:
+  template:
+    metadata:
+      name: numba-classification-job
+    spec:
+      containers:
+        - name: numba-classification-container
+          image: rahulkrish28/numba_classification:latest
+          env:
+            - name: NUMBA_CUDA_ARCH
+              value: "84"
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+              nvidia.com/gpu: 1
+      restartPolicy: Never
+  backoffLimit: 4

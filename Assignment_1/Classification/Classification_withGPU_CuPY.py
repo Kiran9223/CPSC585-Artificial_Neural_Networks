@@ -60,3 +60,4 @@ print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
 print("Accuracy:", accuracy_score(y_test, y_pred) * 100, "%")
 print("Precision:", precision_score(y_test, y_pred))
 print("Computation Time: {:.2f} seconds".format(cupy_time))
+
