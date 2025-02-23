@@ -6,6 +6,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score
 import time
+import platform
+import psutil 
+
+
+print(f"OS: {platform.system()} {platform.release()}")
+print(f"CPU: {platform.processor()}")
+print(f"Cores: {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count(logical=True)} logical")
+print(f"RAM: {round(psutil.virtual_memory().total / 1e9, 2)} GB")
 
 # -----------------------------
 # Data Loading and Preprocessing
