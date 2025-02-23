@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: numba-regression-container
-          image: rahulkrish28/numba_image:latest
+          image: rahulkrish28/numba16_gpu:latest
           env:
             - name: NUMBA_CUDA_ARCH
               value: "84"

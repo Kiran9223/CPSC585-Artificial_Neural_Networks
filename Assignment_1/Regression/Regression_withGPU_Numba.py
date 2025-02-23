@@ -4,12 +4,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import time
+import platform
+import psutil
 from ucimlrepo import fetch_ucirepo
 from numba import cuda
 
 # -----------------------------
 # Data Loading and Preprocessing
 # -----------------------------
+
+# System Specifications
+print(f"OS: {platform.system()} {platform.release()}")
+print(f"CPU: {platform.processor()}")
+print(f"Cores: {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count(logical=True)} logical")
+print(f"RAM: {round(psutil.virtual_memory().total / 1e9, 2)} GB")
+
 # Fetch the dataset from UCI Repository
 individual_household_electric_power_consumption = fetch_ucirepo(id=235)
 
@@ -27,8 +36,8 @@ for col in cols_to_convert:
 X_clean = X.dropna(subset=cols_to_convert)
 
 # Extract features and target, converting them to float
-X = X_clean[features].astype(float)
-y = X_clean[target].astype(float)
+X = X_clean[features].astype(np.float16)
+y = X_clean[target].astype(np.float16)
 
 # Split into training and testing sets (80% training, 20% testing)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
