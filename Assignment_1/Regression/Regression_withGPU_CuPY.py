@@ -5,7 +5,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import time
+import platform
+import psutil
 from ucimlrepo import fetch_ucirepo
+
+# System Specifications
+print(f"OS: {platform.system()} {platform.release()}")
+print(f"CPU: {platform.processor()}")
+print(f"Cores: {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count(logical=True)} logical")
+print(f"RAM: {round(psutil.virtual_memory().total / 1e9, 2)} GB")
+
 
 # Fetch the dataset from UCI Repository
 individual_household_electric_power_consumption = fetch_ucirepo(id=235)
@@ -24,8 +33,8 @@ for col in cols_to_convert:
 
 X_clean = X.dropna(subset=cols_to_convert)
 
-X = X_clean[features].astype(float)
-y = X_clean[target].astype(float)
+X = X_clean[features].astype(np.float16)
+y = X_clean[target].astype(np.float16)
 
 # Splitting the dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -50,11 +59,11 @@ start_time = time.time()
 # Compute (X^T X)
 XtX = cp.dot(X_train_gpu.T, X_train_gpu)
 # Compute inverse of (X^T X)
-XtX_inv = cp.linalg.inv(XtX)
+XtX_inv = cp.linalg.inv(XtX.astype(cp.float32))
 # Compute (X^T y)
 Xty = cp.dot(X_train_gpu.T, y_train_gpu)
 # Regression coefficients: beta = (X^T X)^{-1} (X^T y)
-beta = cp.dot(XtX_inv, Xty)
+beta = cp.dot(XtX_inv, Xty.astype(cp.float32)).astype(cp.float16)
 cupy_time = time.time() - start_time
 
 # Compute predictions on training and testing sets on GPU

@@ -15,4 +15,4 @@ RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
 COPY . .
 
 # Define the command to run your application
-CMD ["python3", "Regression_withGPU_CuPY.py"]
+CMD ["python3", "Regression_withGPU_Numba.py"]

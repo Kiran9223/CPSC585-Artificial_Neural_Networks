@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: cupy-regression-container
-          image: rahulkrish28/cupy_image:latest
+          image: rahulkrish28/cupy16_gpu:latest
           resources:
             requests:
               cpu: "4"
