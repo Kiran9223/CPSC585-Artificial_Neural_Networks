@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: cupy-classification-container
-          image: rahulkrish28/cupy_classification:latest
+          image: rahulkrish28/cupy_classgpu:latest
           resources:
             requests:
               cpu: "4"

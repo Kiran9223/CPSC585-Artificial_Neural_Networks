@@ -5,6 +5,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score,confusion_matrix,precision_score
 import time
+import platform
+import psutil 
+
+
+print(f"OS: {platform.system()} {platform.release()}")
+print(f"CPU: {platform.processor()}")
+print(f"Cores: {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count(logical=True)} logical")
+print(f"RAM: {round(psutil.virtual_memory().total / 1e9, 2)} GB")
+    
+
 
 cdc_diabetes_health_indicators = fetch_ucirepo(id=891)
 # Feature extraction
@@ -30,7 +40,8 @@ print(X_test.shape, y_test.shape)
 start_time = time.time()
 
 # Model training on training data
-log_reg = LogisticRegression()
+num_cores = psutil.cpu_count(logical=True)
+log_reg = LogisticRegression(n_jobs=num_cores)
 log_reg.fit(X_train,y_train)
 cpu_time = time.time() - start_time
 

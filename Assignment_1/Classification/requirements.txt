@@ -4,3 +4,4 @@ scikit-learn
 cupy-cuda11x
 numba
 ucimlrepo
+psutil
