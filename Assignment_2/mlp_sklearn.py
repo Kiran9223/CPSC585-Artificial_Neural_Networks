@@ -20,7 +20,7 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 # Define Scikit-learn MLP Model
-mlp_sklearn = MLPClassifier(hidden_layer_sizes=(256, 128, 64), activation='relu', solver='adam', alpha=0.0001, 
+mlp_sklearn = MLPClassifier(hidden_layer_sizes=(256, 128, 64), activation='relu', solver='adam', alpha=0.0001,
                              max_iter=50, random_state=42, early_stopping=True)
 
 # Train model
