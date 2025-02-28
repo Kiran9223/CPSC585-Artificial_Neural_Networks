@@ -5,6 +5,14 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, adjusted_rand_score
 from ucimlrepo import fetch_ucirepo
+import platform
+import psutil 
+
+
+print(f"OS: {platform.system()} {platform.release()}")
+print(f"CPU: {platform.processor()}")
+print(f"Cores: {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count(logical=True)} logical")
+print(f"RAM: {round(psutil.virtual_memory().total / 1e9, 2)} GB")
 
 # Load dataset (Update with correct file path)
 dataset = fetch_ucirepo(id=891)
@@ -21,7 +29,7 @@ scaled_features = scaler.fit_transform(df)
 start_time = time.time()
 
 # Run KMeans on CPU (Using all cores)
-kmeans_cpu = KMeans(n_clusters=3, random_state=42, n_init=10)
+kmeans_cpu = KMeans(n_clusters=2, random_state=42, n_init=10)
 cluster_labels_cpu = kmeans_cpu.fit_predict(scaled_features)
 
 # Compute execution time
