@@ -7,6 +7,34 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score
+import platform
+import psutil
+
+def get_system_specs():
+    print("\n=== Machine Specifications ===")
+    print(f"Operating System: {platform.system()} {platform.release()}")
+    print(f"Processor: {platform.processor()}")
+    
+    # CPU details
+    cpu_freq = psutil.cpu_freq()
+    print(f"CPU: {psutil.cpu_count(logical=False)} cores, {psutil.cpu_count(logical=True)} threads")
+    print(f"CPU Max Frequency: {cpu_freq.max:.2f} MHz")
+    
+    # RAM details
+    ram = psutil.virtual_memory()
+    print(f"Total RAM: {ram.total / (1024 ** 3):.2f} GB")
+    
+    # GPU details (if available)
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"CUDA Cores: {torch.cuda.device_count()}")
+        print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / (1024 ** 3):.2f} GB")
+    else:
+        print("GPU: Not available")
+    print("==============================\n")
+
+# Display machine specifications
+get_system_specs()
 
 # Load MNIST dataset
 mnist = fetch_openml('mnist_784', version=1)
@@ -52,7 +80,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Train the model
 start_time = time.time()
-for epoch in range(20):  # Number of epochs
+for epoch in range(50):  # Number of epochs
     for batch_X, batch_y in train_loader:
         optimizer.zero_grad()
         outputs = model(batch_X)
@@ -74,6 +102,6 @@ print(f"Accuracy: {accuracy:.4f}")
 print(f"Precision: {precision:.4f}")
 
 
-# PyTorch MLP Training Time: 31.25 seconds
-# Accuracy: 0.9749
-# Precision: 0.9749
+# PyTorch MLP Training Time: 15.43 seconds
+# Accuracy: 0.9757
+# Precision: 0.9756
