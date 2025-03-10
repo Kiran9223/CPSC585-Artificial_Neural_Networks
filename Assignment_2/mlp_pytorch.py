@@ -4,6 +4,34 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from sklearn.metrics import precision_score
+import platform
+import psutil
+
+def get_system_specs():
+    print("\n=== Machine Specifications ===")
+    print(f"Operating System: {platform.system()} {platform.release()}")
+    print(f"Processor: {platform.processor()}")
+    
+    # CPU details
+    cpu_freq = psutil.cpu_freq()
+    print(f"CPU: {psutil.cpu_count(logical=False)} cores, {psutil.cpu_count(logical=True)} threads")
+    print(f"CPU Max Frequency: {cpu_freq.max:.2f} MHz")
+    
+    # RAM details
+    ram = psutil.virtual_memory()
+    print(f"Total RAM: {ram.total / (1024 ** 3):.2f} GB")
+    
+    # GPU details (if available)
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"CUDA Cores: {torch.cuda.device_count()}")
+        print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / (1024 ** 3):.2f} GB")
+    else:
+        print("GPU: Not available")
+    print("==============================\n")
+
+get_system_specs()
 
 # Load MNIST dataset
 transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
@@ -11,35 +39,29 @@ train_data = datasets.MNIST(root='./data', train=True, download=True, transform=
 test_data = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
 # Prepare DataLoader
-train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
+train_loader = DataLoader(train_data, batch_size=128, shuffle=True)
+test_loader = DataLoader(test_data, batch_size=128, shuffle=False)
 
 # Define PyTorch MLP Model
 class MLPModel(nn.Module):
     def __init__(self):
         super(MLPModel, self).__init__()
-        self.fc1 = nn.Linear(28*28, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, 10)
+        self.fc1 = nn.Linear(28*28, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 10)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
     
     def forward(self, x):
         x = x.view(-1, 28*28)
         x = self.relu(self.fc1(x))
-        x = self.dropout(x)
         x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc3(x))
-        x = self.dropout(x)
-        x = self.fc4(x)
+        x = self.fc3(x)
         return x
 
 # Model, Loss, and Optimizer
 model = MLPModel()
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)  # L2 regularization added
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
@@ -83,7 +105,15 @@ with torch.no_grad():
         correct += (predicted == batch_y).sum().item()
 pytorch_accuracy = correct / total
 
-# Print results
-print(f"PyTorch MLP - Accuracy: {pytorch_accuracy:.4f}, Training Time: {pytorch_time:.2f} sec")
+all_preds, all_labels = [], []
+with torch.no_grad():
+    for batch_X, batch_y in test_loader:
+        batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+        outputs = model(batch_X)
+        _, predicted = torch.max(outputs, 1)
+        all_preds.extend(predicted.cpu().numpy())
+        all_labels.extend(batch_y.cpu().numpy())
+precision = precision_score(all_labels, all_preds, average='weighted')
 
-#PyTorch MLP - Accuracy: 0.9835, Training Time: 734.90 sec
+# Print results
+print(f"PyTorch MLP - Accuracy: {pytorch_accuracy:.4f},  Precision: {precision:.4f}, Training Time: {pytorch_time:.2f} sec")
