@@ -50,27 +50,14 @@ def parse_receipt_text(text):
             break
 
     # Patterns
-    item_pattern = re.compile(r'(?:(\d+)\s+)?([a-zA-Z]+)(?:\s+(\d+))?(?:\s+([a-zA-Z]+))?\s+([\d.]+)')  
+    item_name_pattern = re.compile(r'^(?:[A-Z]-)?[A-Z][A-Z\s\-\.0-9]+$')
     total_pattern = re.compile(r'(TOTAL|TOTAL DUE|AMOUNT DUE|BALANCE DUE|TOTAL:)\s*\$?\s*(\d+\.\d{2})', re.IGNORECASE)
 
     for line in lines:
-        # Check for total
-        total_match = total_pattern.search(line)
-        if total_match:
-            try:
-                total_amount = float(total_match.group(2))
-            except:
-                pass
-        else:
-            # Check for item line
-            item_match = item_pattern.search(line)
-            if item_match:
-                item_name = item_match.group(1).strip()
-                try:
-                    amount = float(item_match.group(2))
-                    items.append((item_name, amount))
-                except:
-                    continue
+        if total_match := total_pattern.search(line):
+            total_amount = float(total_match.group(2))
+        elif item_name_pattern.match(line):
+            items.append((line, 0.0))  # Amount is not known from this line
 
     return store_name, items, total_amount
 
@@ -85,14 +72,21 @@ def generate_shopping_summary_csv(store_data, output_csv):
     all_items = []
 
     for receipt_name, store_name, items, total_amount in store_data:
+        first_row = True
         for item, amount in items:
-            all_items.append([receipt_name, store_name, item, amount])
-        # Add total row for the receipt
-        all_items.append([receipt_name, store_name, 'TOTAL', total_amount])
+            all_items.append([
+                store_name if first_row else '',  # Store name only once
+                item,
+                amount
+            ])
+            first_row = False
+        # Add TOTAL row with empty store name
+        all_items.append(['', 'TOTAL', total_amount])
 
-    df = pd.DataFrame(all_items, columns=["Receipt", "Store Name", "Item Name", "Amount"])
+    df = pd.DataFrame(all_items, columns=["Store Name", "Item Name", "Amount"])
     df.to_csv(output_csv, index=False)
     print(f"\nShopping summary saved to '{output_csv}'.")
+
 
 def main():
     zip_path = 'Assignment3_receipts.zip'
@@ -109,7 +103,7 @@ def main():
     for file_name in os.listdir(extract_to):
         if file_name.lower().endswith(('.jpg', '.jpeg', '.png')):
             image_path = os.path.join(extract_to, file_name)
-            print(f"\n🔍 Processing {file_name}...")
+            print(f"\nProcessing {file_name}...")
 
             text = extract_text_from_image(image_path)
             if not text.strip():
