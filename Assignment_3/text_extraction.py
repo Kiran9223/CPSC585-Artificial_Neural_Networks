@@ -6,7 +6,7 @@ import pandas as pd
 import re
 
 # Path to Tesseract OCR
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Update as per your setup
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Path where Tesseract is installed
 
 def extract_text_from_image(image_path):
     try:

@@ -30,7 +30,7 @@ def add_gaussian_noise(image, mean=0.0, std=1.0):
     noisy_image = Image.fromarray((noisy_image_np * 255).astype(np.uint8))  # Convert back to image
     return noisy_image
 
-# Load a pretrained Autoencoder 
+# Autoencoder 
 class Autoencoder(nn.Module):
     def __init__(self):
         super(Autoencoder, self).__init__()
@@ -51,7 +51,7 @@ class Autoencoder(nn.Module):
 
 # Load pretrained ResNet model
 def load_resnet_model():
-    resnet_model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)  # Use new weights API
+    resnet_model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)  
     resnet_model.eval()  # Set to evaluation mode
     return resnet_model
 
@@ -60,13 +60,16 @@ def main():
     # Load image and apply Gaussian noise
     img_path = 'Assignment3_dog_to_compress.jpg'
     image = Image.open(img_path).convert('RGB')
+    plt.imshow(image)
+    plt.title("Original Image")
+    plt.show()
     
     noisy_image = add_gaussian_noise(image)
     plt.imshow(noisy_image)
     plt.title("Noisy Image")
     plt.show()
 
-    # Transform the image to tensor and normalize for pretrained Autoencoder and ResNet
+    # Transform the image to tensor and normalize for Autoencoder and ResNet
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
@@ -83,7 +86,7 @@ def main():
     # Reconstruct the image from the compressed representation
     reconstructed_image = compressed_image.squeeze(0).permute(1, 2, 0).numpy()
     reconstructed_image = np.clip(reconstructed_image, 0, 1)  # Ensure valid image range
-    
+   
     # Convert reconstructed image back to PIL for transformation
     reconstructed_image_pil = Image.fromarray((reconstructed_image * 255).astype(np.uint8))
     
